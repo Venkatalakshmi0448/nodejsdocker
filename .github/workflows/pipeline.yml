@@ -1,5 +1,3 @@
-OLD SCRIPT:
-
 name: Validate Application Pipeline
 on:
   push:
