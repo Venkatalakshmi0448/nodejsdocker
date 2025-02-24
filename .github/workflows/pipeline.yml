@@ -14,7 +14,7 @@ on:
         description: "Path to the Dockerfile"
         required: true
         type: string
-        default: "dockerfile"
+        default: "Dockerfile"
       dockerhub_repo:
         description: "DockerHub repository name"
         required: true
@@ -81,12 +81,23 @@ jobs:
         with:
           images: venkatalakshmi0448/nodejs
 
+      # Debugging step to check for Dockerfile
+      - name: Debug - Check for Dockerfile
+        if: matrix.step == 'docker-build-push'
+        run: |
+          echo "Checking current directory:"
+          pwd
+          echo "Listing files:"
+          ls -l
+          echo "Checking for Dockerfile explicitly:"
+          ls -l ${{ github.workspace }}/Dockerfile || echo "Dockerfile NOT found!"
+
       # Build and push Docker image
       - name: Build and Push Docker Image
         if: matrix.step == 'docker-build-push'
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ${{ github.workspace }}
           file: ${{ inputs.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
