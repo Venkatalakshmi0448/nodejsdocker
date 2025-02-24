@@ -55,18 +55,6 @@ jobs:
             exit 1
           fi
 
-      # ✅ Dynamically detect Dockerfile path
-      - name: Detect Dockerfile path
-        id: detect-dockerfile
-        run: |
-          FILE_PATH=$(find . -type f -name "Dockerfile" | head -n 1)
-          if [ -z "$FILE_PATH" ]; then
-            echo "❌ ERROR: Dockerfile not found!"
-            exit 1
-          fi
-          echo "✅ Found Dockerfile at: $FILE_PATH"
-          echo "DOCKERFILE_PATH=$FILE_PATH" >> $GITHUB_ENV
-
       # ✅ Docker login
       - name: Docker Login
         uses: docker/login-action@v2
@@ -90,7 +78,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: .
-          file: ${{ env.DOCKERFILE_PATH }}  # ✅ Uses detected Dockerfile path
+          file: ${{ inputs.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
