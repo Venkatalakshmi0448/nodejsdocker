@@ -1,77 +1,100 @@
-name: Validate and Push Docker Image (Reusable)
+OLD SCRIPT:
 
+name: Validate Application Pipeline
 on:
   push:
     branches:
       - main
-  workflow_dispatch:  # Allows manual trigger
   workflow_call:
     inputs:
-      branches:
-        description: "Branches to validate"
-        required: false
+      branch:
+        description: 'Branch to validate'
+        required: true
         type: string
-        default: '["main"]'
-      dockerfiles:
-        description: "Paths to Dockerfiles"
-        required: false
+      dockerfile:
+        description: 'Path to the dockerfile'
+        required: true
         type: string
-        default: '["Dockerfile"]'
+        default: './dockerfile'
       dockerhub_repo:
-        description: "DockerHub repository name"
+        description: 'Dockerhub repo name'
         required: true
         type: string
-      docker_tags:
-        description: "Docker image tags"
-        required: false
-        type: string
-        default: '["latest"]'
-      deploy_envs:
-        description: "Deployment environments"
-        required: false
-        type: string
-        default: '["staging"]'
-    secrets:
-      DOCKERHUB_USERNAME:
+        default: 'venkatalakshmi0448/nodejs'
+      deploy_env:
+        description: 'Deployment environment'
         required: true
-      DOCKERHUB_PASSWORD:
-        required: true
+        type: string
+        default: 'staging'
 
 jobs:
-  validate-and-push:
+  validate:
     runs-on: ubuntu-latest
-    environment: ${{ matrix.deploy_env }}
-
+    environment:
+      name: 'validate'
+    
     strategy:
       matrix:
-        branch: ${{ fromJson(inputs.branches) }}
-        dockerfile: ${{ fromJson(inputs.dockerfiles) }}
-        docker_tag: ${{ fromJson(inputs.docker_tags) }}
-        deploy_env: ${{ fromJson(inputs.deploy_envs) }}
-      fail-fast: false
+        step: ['checkout', 'docker-login', 'docker-build-push']
 
     steps:
+      # Checkout step
       - name: Checkout code
+        if: ${{ matrix.step == 'checkout' }}
         uses: actions/checkout@v3
         with:
-          ref: ${{ matrix.branch }}
-          fetch-depth: 0
-          submodules: true
+          ref: ${{ inputs.branch }}
+        
+      # Docker login step
+      - name: Docker Login
+        if: ${{ matrix.step == 'docker-login' }}
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - name: Validate Inputs
+      - name: Check Docker login status
         run: |
-          echo "Branch: ${{ matrix.branch }}"
-          echo "Dockerfile: ${{ matrix.dockerfile }}"
-          echo "Docker Tag: ${{ matrix.docker_tag }}"
-          echo "Deployment Environment: ${{ matrix.deploy_env }}"
+            echo "Docker login successful!"
+            docker info
 
-      - name: Validate Secrets
+    # Debugging step to check current directory and list files
+      - name: Debug:Check current directory and list files
         run: |
-          if [[ -z "${{ secrets.DOCKERHUB_USERNAME }}" || -z "${{ secrets.DOCKERHUB_PASSWORD }}" ]]; then
-            echo "❌ Required secrets are missing!"
-            exit 1
-          fi
-          echo "✅ Secrets validation passed."
+          echo "Current working directory:"
+          pwd  # Print working directory
+          echo "Listing all files in the current directory:"
+          ls -l  # List files in the current directory
+          echo "Listing all files recursively:"
+          ls -R  # List files recursively
+     
+   # Docker Buildx setup
+      - name: Set up Docker Buildx
+        if: ${{ matrix.step == 'docker-build-push' }}
+        uses: docker/setup-buildx-action@v2
 
-      - name: Log in to DockerHub
-        uses: docker/l
+      - name: Extract metadata (tags, labels) for docker
+        id: meta
+        uses: docker/metadata-action@v3
+        with: 
+            images: venkatalakshmi0448/nodejs
+
+   # Docker build and push step
+      - name: build and Push Docker image
+        if: ${{ matrix.step == 'docker-build-push' }}
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: ${{ inputs.dockerfile }} 
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  validate-environment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if environment variables are set
+        run: |
+          echo "Validating Environment Variables"
+          echo "DOCKERHUB_USERNAME = ${{ secrets.DOCKERHUB_USERNAME }}"
+          echo "DOCKERHUB_PASSWORD = ${{ secrets.DOCKERHUB_PASSWORD }}"
