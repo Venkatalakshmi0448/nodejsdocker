@@ -1,4 +1,5 @@
 name: Validate Application Pipeline
+
 on:
   push:
     branches:
@@ -6,81 +7,79 @@ on:
   workflow_call:
     inputs:
       branch:
-        description: 'Branch to validate'
+        description: "Branch to validate"
         required: true
         type: string
       dockerfile:
-        description: 'Path to the dockerfile'
+        description: "Path to the Dockerfile"
         required: true
         type: string
-        default: './dockerfile'
+        default: "./Dockerfile"
       dockerhub_repo:
-        description: 'Dockerhub repo name'
+        description: "DockerHub repository name"
         required: true
         type: string
-        default: 'venkatalakshmi0448/nodejs-docker'
+        default: "venkatalakshmi0448/nodejs-docker"
       deploy_env:
-        description: 'Deployment environment'
+        description: "Deployment environment"
         required: true
         type: string
-        default: 'staging'
+        default: "staging"
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_PASSWORD:
+        required: true
 
 jobs:
   validate:
     runs-on: ubuntu-latest
-    environment:
-      name: 'validate'
-    
-    strategy:
-      matrix:
-        step: ['checkout', 'docker-login', 'docker-build-push']
+    environment: validate
 
     steps:
-      # Checkout step
+      # Checkout repository
       - name: Checkout code
-        if: ${{ matrix.step == 'checkout' }}
         uses: actions/checkout@v3
         with:
           ref: ${{ inputs.branch }}
-        
-      # Docker login step
+
+      # Debugging: List directory contents
+      - name: Debug: Check current directory and list files
+        run: |
+          echo "Current working directory:"
+          pwd  
+          echo "Listing all files in the current directory:"
+          ls -l  
+          echo "Listing all files recursively:"
+          ls -R  
+
+      # Docker Login
       - name: Docker Login
-        if: ${{ matrix.step == 'docker-login' }}
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - name: Check Docker login status
+      # Verify Docker Login
+      - name: Verify Docker Login
         run: |
-            echo "Docker login successful!"
-            docker info
+          echo "Checking Docker login status..."
+          docker info | grep -q "Username" && echo "✅ Docker login successful!" || exit 1
 
-    # Debugging step to check current directory and list files
-      - name: Debug:Check current directory and list files
-        run: |
-          echo "Current working directory:"
-          pwd  # Print working directory
-          echo "Listing all files in the current directory:"
-          ls -l  # List files in the current directory
-          echo "Listing all files recursively:"
-          ls -R  # List files recursively
-     
-   # Docker Buildx setup
+      # Set up Docker Buildx
       - name: Set up Docker Buildx
-        if: ${{ matrix.step == 'docker-build-push' }}
         uses: docker/setup-buildx-action@v2
 
-      - name: Extract metadata (tags, labels) for docker
+      # Extract metadata for Docker
+      - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v3
-        with: 
-            images: venkatalakshmi0448/nodejs-docker
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ inputs.dockerhub_repo }}
 
-   # Docker build and push step
-      - name: build and Push Docker image
-        if: ${{ matrix.step == 'docker-build-push' }}
-        uses: docker/build-push-action@v3
+      # Build and Push Docker Image
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v4
         with:
           context: .
           file: ${{ inputs.dockerfile }} 
@@ -94,5 +93,5 @@ jobs:
       - name: Check if environment variables are set
         run: |
           echo "Validating Environment Variables"
-          echo "DOCKERHUB_USERNAME = ${{ secrets.DOCKERHUB_USERNAME }}"
-          echo "DOCKERHUB_PASSWORD = ${{ secrets.DOCKERHUB_PASSWORD }}"
+          echo "DOCKERHUB_USERNAME: ${DOCKERHUB_USERNAME:+✅ Set}"
+          echo "DOCKERHUB_PASSWORD: ${DOCKERHUB_PASSWORD:+✅ Set}"
