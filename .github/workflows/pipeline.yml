@@ -14,7 +14,7 @@ on:
         description: 'Path to the Dockerfile'
         required: true
         type: string
-        default: 'Dockerfile'  # Removed "./" to avoid incorrect paths
+        default: 'Dockerfile'
       dockerhub_repo:
         description: 'DockerHub repo name'
         required: true
@@ -39,7 +39,7 @@ jobs:
         with:
           ref: ${{ inputs.branch }}
 
-      # ✅ Debug: Check files in workspace
+      # ✅ Debug: List files
       - name: Debug: List files
         run: |
           echo "Current directory: $(pwd)"
@@ -48,9 +48,14 @@ jobs:
           echo "Recursively listing all files:"
           find . -type f
           echo "🔍 Searching for Dockerfile..."
-          find . -type f -name "Dockerfile" || echo "❌ No Dockerfile found!"
+          if find . -type f -name "Dockerfile" | grep -q 'Dockerfile'; then
+            echo "✅ Dockerfile found!"
+          else
+            echo "❌ ERROR: Dockerfile not found!"
+            exit 1
+          fi
 
-      # ✅ Dynamically set correct Dockerfile path
+      # ✅ Dynamically detect Dockerfile path
       - name: Detect Dockerfile path
         id: detect-dockerfile
         run: |
@@ -73,19 +78,19 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # ✅ Extract metadata (tags, labels)
+      # ✅ Extract metadata for Docker image
       - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v3
         with: 
-          images: venkatalakshmi0448/nodejs-docker
+          images: ${{ inputs.dockerhub_repo }}
 
       # ✅ Build and push Docker image
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v3
         with:
           context: .
-          file: ${{ env.DOCKERFILE_PATH }}  # ✅ Uses dynamically detected path
+          file: ${{ env.DOCKERFILE_PATH }}  # ✅ Uses detected Dockerfile path
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
