@@ -39,10 +39,15 @@ jobs:
     steps:
       # Checkout step
       - name: Checkout code
-        if: ${{ matrix.step == 'checkout' }}
         uses: actions/checkout@v3
         with:
           ref: ${{ inputs.branch }}
+
+     # Debugging step to check files
+      - name: Debug - List Files
+        run: |
+           echo "Current Directory: $(pwd)"
+           ls -la
           
      # Set up Docker Buildx
       - name: Set up Docker Buildx
@@ -68,7 +73,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ${{ inputs.dockerfile }}
+          file: ./dockerfile
           push: true  # Push the image to Docker Hub
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
