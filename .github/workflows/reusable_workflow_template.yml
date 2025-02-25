@@ -63,7 +63,7 @@ jobs:
         with:
           context: .
           file: ${{ inputs.dockerfile }}
-          tags: ${{ inputs.dockerhub_repo }}:latest
+          tags: ${{ inputs.dockerhub_repo }}
           push: true  # Push the image to Docker Hub
 
   validate-environment:
