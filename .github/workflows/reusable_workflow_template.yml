@@ -56,6 +56,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
+      - name: Extract metadata (tags, labels) for docker
+        id: meta
+        uses: docker/metadata-action@v3
+        with: 
+            images: venkatalakshmi0448/nodejs-docker
+
       # Docker build and push step
       - name: Build and Push Docker image
         if: ${{ matrix.step == 'docker-build-push' }}
@@ -63,9 +69,10 @@ jobs:
         with:
           context: .
           file: ${{ inputs.dockerfile }}
-          tags: ${{ inputs.dockerhub_repo }}
           push: true  # Push the image to Docker Hub
-
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          
   validate-environment:
     runs-on: ubuntu-latest
     steps:
