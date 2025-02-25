@@ -58,7 +58,7 @@ jobs:
 
       # Docker build and push step
       - name: Build and Push Docker image
-        if: ${{ matrix.step == 'docker-build-push' }
+        if: ${{ matrix.step == 'docker-build-push' }}
         uses: docker/build-push-action@v5
         with:
           context: .
